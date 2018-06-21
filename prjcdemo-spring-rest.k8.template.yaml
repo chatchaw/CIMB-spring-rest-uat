@@ -1,0 +1,73 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: prjcdemo
+  name: prjcdemo-spring-rest
+  labels:
+    app: prjcdemo-spring-rest
+    type: jenkins-build
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: prjcdemo-spring-rest
+    spec:
+      containers:
+      - name: prjcdemo-spring-rest
+        image: <%= new_image %>
+        env:
+          - name: prjcdemo_JDBC_URL
+            value: jdbc:mysql://prjcdemo-mysql/hotel
+          - name: prjcdemo_DB_USER
+            value: root
+          - name: prjcdemo_DB_PASSWORD
+            value: prjcdemo_mysql_password
+
+        livenessProbe:
+          initialDelaySeconds: 45
+          periodSeconds: 15
+          httpGet:
+            path: /health
+            port: 8091
+        readinessProbe:
+          initialDelaySeconds: 45
+          periodSeconds: 15
+          httpGet:
+              path: /health
+              port: 8091
+        resources:
+          limits:
+            cpu: 1
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+      imagePullSecrets:
+      - name: admin.regkey
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: prjcdemo
+  name: prjcdemo-spring-rest
+  labels:
+    app: prjcdemo-spring-rest
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 8090
+      protocol: TCP
+      name: http-app
+    - port: 8091
+      targetPort: 8091
+      protocol: TCP
+      name: http-admin
+  selector:
+    app: prjcdemo-spring-rest
